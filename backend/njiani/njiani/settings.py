@@ -10,6 +10,8 @@ For the full list of settings and their values, see
 https://docs.djangoproject.com/en/3.1/ref/settings/
 """
 
+import os
+from django.core.management.utils import get_random_secret_key
 from pathlib import Path
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
@@ -20,7 +22,12 @@ BASE_DIR = Path(__file__).resolve(strict=True).parent.parent
 # See https://docs.djangoproject.com/en/3.1/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = 'qu3ljmduks2@fr&&b^qy(q4reew94u$7998c5z^_!o47nx!#@@'
+
+SECRET_KEY = os.environ.get("SECRET_KEY")
+
+if not SECRET_KEY and DEBUG:
+    warnings.warn("SECRET_KEY not configured, using a random temporary key.")
+    SECRET_KEY = get_random_secret_key()
 
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
@@ -39,8 +46,11 @@ INSTALLED_APPS = [
     'django.contrib.staticfiles',
     "django_filters",
     'graphene_django',
-    "graphql_auth",
+    'graphql_auth',
+    'graphql_jwt.refresh_token.apps.RefreshTokenConfig',
     'njiani.users',
+    'njiani.services',
+    'njiani.apis',
 
 ]
 
@@ -145,14 +155,33 @@ GRAPHQL_JWT = {
 
     # optional
     "JWT_LONG_RUNNING_REFRESH_TOKEN": False,
+
+    # Authentication
+    "JWT_ALLOW_ANY_CLASSES": [
+        "graphql_auth.mutations.Register",
+    ],
 }
 
 GRAPHQL_AUTH = {
 
-    "REGISTER_MUTATION_FIELDS_OPTIONAL" : ['email'],
     "USER_NODE_FILTER_FIELDS": {
         "email": ["exact",],
         "id": ["exact",],
         
+    },
+    'LOGIN_ALLOWED_FIELDS': ['email'],
+    'REGISTER_MUTATION_FIELDS': {
+        "email": "String",
+
     }
 }
+
+# GraphQL
+
+GRAPHENE = {
+    'SCHEMA': 'njiani.apis.schema.schema',
+    'MIDDLEWARE': [
+        'graphql_jwt.middleware.JSONWebTokenMiddleware',
+    ]
+}
+
